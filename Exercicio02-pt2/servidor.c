@@ -16,6 +16,18 @@
 #define MIN_ARG 2
 #define IPV4_LEN 16
 
+/* ===========================================================================
+ * FUNCTION: CheckArguments
+ *
+ * DESCRIPTION: Checks if the number of arguments are correct
+ *
+ * PARAMETERS:
+ * argc - number of arguments passed
+ * argv - arguments
+ *
+ * RETURN VALUE: none
+ *
+ * ===========================================================================*/
 void CheckArguments(int argc, char **argv){
     char error[MAXLINE + 1];
     if (argc != MIN_ARG) {
@@ -27,21 +39,59 @@ void CheckArguments(int argc, char **argv){
     }
 }
 
+/* ===========================================================================
+ * FUNCTION: Socket
+ *
+ * DESCRIPTION: Requests the creation of a socket and return it's fd
+ *
+ * PARAMETERS:
+ * family - family of IP (IPv4 or IPV6)
+ * type - type of socket: TCP or UDP
+ * flags - protocol to be used
+ *
+ * RETURN VALUE: socket file descriptor - if successful
+ *
+ * ===========================================================================*/
 int Socket(int family, int type, int flags) {
     int sockfd;
     if ((sockfd = socket(family, type, flags)) < 0) {
         perror("socket");
         exit(1);
-    } else
+    } else {
         return sockfd;
+    }
 }
 
+/* ===========================================================================
+ * FUNCTION: ConfigureServSocket
+ *
+ * DESCRIPTION: Configure fields of the socket (IP type and port)
+ *
+ * PARAMETERS:
+ * servaddr - socket structure to be configured
+ * port - port to be stored on socket structure
+ *
+ * RETURN VALUE: none
+ *
+ * ===========================================================================*/
 void ConfigureServSocket(struct sockaddr_in *servaddr, int port) {
     bzero(servaddr, sizeof(*servaddr));
     servaddr->sin_family = AF_INET;
     servaddr->sin_port   = htons(port);
 }
 
+/* ===========================================================================
+ * FUNCTION: Bind
+ *
+ * DESCRIPTION: Binds a socket a previous configured settings
+ *
+ * PARAMETERS:
+ * listenfd - socket to be binded
+ * servaddr - structure of the socket
+ *
+ * RETURN VALUE: none - if successful
+ *
+ * ===========================================================================*/
 void Bind(int listenfd, struct sockaddr_in *servaddr) {
     if (bind(listenfd, (struct sockaddr *)servaddr, sizeof(*servaddr)) == -1) {
         perror("bind");
@@ -49,6 +99,16 @@ void Bind(int listenfd, struct sockaddr_in *servaddr) {
     }
 }
 
+/* ===========================================================================
+ * FUNCTION: Listen
+ *
+ * DESCRIPTION: Puts socket on listen mode
+ *
+ * PARAMETERS: listenfd - file descriptor of the socket
+ *
+ * RETURN VALUE: none - if successful
+ *
+ * ===========================================================================*/
 void Listen(int listenfd) {
     if (listen(listenfd, LISTENQ) == -1) {
         perror("listen");
@@ -56,6 +116,19 @@ void Listen(int listenfd) {
     }
 }
 
+/* ===========================================================================
+ * FUNCTION: Accept
+ *
+ * DESCRIPTION: Accepts the connection from a remote socket
+ *
+ * PARAMETERS:
+ * listenfd - socket file descriptor
+ * addr - remote socket requesting a connection
+ * addrlen - len of the remote socket
+ *
+ * RETURN VALUE: connfd - new conection socket (now connected to the client)
+ *
+ * ===========================================================================*/
 int Accept(int listenfd, struct sockaddr_in *addr, unsigned int *addrlen){
     int connfd;
     if ((connfd = accept(listenfd, (struct sockaddr *) addr, addrlen)) == -1 ) {
@@ -66,58 +139,83 @@ int Accept(int listenfd, struct sockaddr_in *addr, unsigned int *addrlen){
     }
 }
 
+/* ===========================================================================
+ * FUNCTION: Close
+ *
+ * DESCRIPTION: Close the socket from it's file descriptor. Prints an
+ * error if something unexpected occurs
+ *
+ * PARAMETERS: sockfd - socket file descriptor
+ *
+ * RETURN VALUE: none - if successful
+ *
+ * ===========================================================================*/
 void Close(int sockfd) {
     if (close(sockfd) == -1) {
         perror("close");
     }
 }
 
+/* ===========================================================================
+ * FUNCTION: main
+ *
+ * DESCRIPTION: Creates an echo server that executes Unix commands requested
+ * from a remote socket.
+ *
+ * PARAMETERS:
+ * argc - number of arguments passed
+ * argv - arguments passed
+ *
+ * RETURN VALUE: 0 - if successful
+ *
+ * ===========================================================================*/
 int main (int argc, char **argv) {
     int listenfd, connfd, n;
-    char buffer_str[MAXLINE + 1];
-    struct sockaddr_in servaddr;
-    struct sockaddr_in cliaddr;
-    unsigned int cliaddr_len = sizeof cliaddr;
+    char send_buffer_str[MAXDATASIZE], recv_buffer_str[MAXDATASIZE];
+    struct sockaddr_in servaddr, cliaddr;
+
     char cli_IP[IPV4_LEN];
+    unsigned int cliaddr_len = sizeof cliaddr;
+
     pid_t pid;
     /* FILE *logger; */
 
     /* fopen("servidor_log.txt", "a"); */
 
+    // Initial socket configurations
     CheckArguments(argc, argv);
-
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
-
     ConfigureServSocket(&servaddr, atoi(argv[1]));
-
     Bind(listenfd, &servaddr);
-
     Listen(listenfd);
 
     for (;;) {
-
+        // Accept connections
         connfd = Accept(listenfd, &cliaddr, &cliaddr_len);
 
+        /* after the connection is extablished
+         * the process executes a fork, which
+         * will be responsible for the actual
+         * execution of the echo function.
+         */
         if ((pid=fork()) == 0) {
 
             Close(listenfd);
 
+            // Prints clients information on connection
+            printf("======== New connection ========\n");
             inet_ntop(AF_INET, &cliaddr.sin_addr, cli_IP, sizeof(cli_IP));
             printf("Client's IP: %s\nClient's Port: %d\n",cli_IP, ntohs(cliaddr.sin_port));
+            printf("================================\n");
 
-            while ( (n = read(connfd, buffer_str, MAXLINE)) > 0) {
-                buffer_str[n] = 0;
+            // Waits for commands to be received
+            while ( (n = read(connfd, recv_buffer_str, MAXLINE)) > 0) {
+                recv_buffer_str[n] = 0;
 
-                /* buffer_str[n] = 0; */
-                /* if (fputs(buffer_str, stdout) == EOF) { */
-                /*     perror("fputs error"); */
-                /*     exit(1); */
-                /* } */
-                /* printf("%d\n", n); */
-                /* printf("%s\n", buffer_str); */
-                write(connfd, buffer_str, strlen(buffer_str));
-                system(buffer_str);
+                strcpy(send_buffer_str,recv_buffer_str);
+                write(connfd, recv_buffer_str, strlen(recv_buffer_str));
 
+                system(recv_buffer_str);
             }
 
             Close(connfd);
@@ -128,5 +226,6 @@ int main (int argc, char **argv) {
     }
 
     return(0);
+
 
 }
