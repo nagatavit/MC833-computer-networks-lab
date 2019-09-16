@@ -157,6 +157,28 @@ void Close(int sockfd) {
 }
 
 /* ===========================================================================
+ * FUNCTION: PrintClientSocketInfo
+ *
+ * DESCRIPTION: Prints client socket information
+ *
+ * PARAMETERS:
+ * servaddr - Socket structure of the server
+ * sockfd - socket file descriptor from the local socket
+ *
+ * RETURN VALUE: none
+ *
+ * ===========================================================================*/
+void PrintClientSocketInfo(struct sockaddr_in cliaddr){
+    char cli_IP[IPV4_LEN];
+
+    printf("======== New connection ========\n");
+    inet_ntop(AF_INET, &cliaddr.sin_addr, cli_IP, sizeof(cli_IP));
+    printf("Client's IP: %s\nClient's Port: %d\n",cli_IP, ntohs(cliaddr.sin_port));
+    printf("================================\n");
+}
+
+
+/* ===========================================================================
  * FUNCTION: main
  *
  * DESCRIPTION: Creates an echo server that executes Unix commands requested
@@ -174,13 +196,9 @@ int main (int argc, char **argv) {
     char send_buffer_str[MAXDATASIZE], recv_buffer_str[MAXDATASIZE];
     struct sockaddr_in servaddr, cliaddr;
 
-    char cli_IP[IPV4_LEN];
     unsigned int cliaddr_len = sizeof cliaddr;
 
     pid_t pid;
-    /* FILE *logger; */
-
-    /* fopen("servidor_log.txt", "a"); */
 
     // Initial socket configurations
     CheckArguments(argc, argv);
@@ -193,28 +211,27 @@ int main (int argc, char **argv) {
         // Accept connections
         connfd = Accept(listenfd, &cliaddr, &cliaddr_len);
 
-        /* after the connection is extablished
-         * the process executes a fork, which
-         * will be responsible for the actual
-         * execution of the echo function.
+        /* after the connection is extablished the process executes a fork, which
+         * will be responsible for the actual execution of the echo function.
          */
         if ((pid=fork()) == 0) {
 
             Close(listenfd);
 
-            // Prints clients information on connection
-            printf("======== New connection ========\n");
-            inet_ntop(AF_INET, &cliaddr.sin_addr, cli_IP, sizeof(cli_IP));
-            printf("Client's IP: %s\nClient's Port: %d\n",cli_IP, ntohs(cliaddr.sin_port));
-            printf("================================\n");
+            // Prints the new connected client socket
+            PrintClientSocketInfo(cliaddr);
 
             // Waits for commands to be received
-            while ( (n = read(connfd, recv_buffer_str, MAXLINE)) > 0) {
+            while ( (n = read(connfd, recv_buffer_str, MAXDATASIZE)) > 0) {
                 recv_buffer_str[n] = 0;
 
+                // Copy received string to sender string
                 strcpy(send_buffer_str,recv_buffer_str);
+
+                // Send the received string to client
                 write(connfd, recv_buffer_str, strlen(recv_buffer_str));
 
+                // executes the received string
                 system(recv_buffer_str);
             }
 
