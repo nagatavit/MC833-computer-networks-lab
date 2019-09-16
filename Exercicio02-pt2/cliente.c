@@ -11,19 +11,22 @@
 #include <unistd.h>
 
 #define MAXLINE 4096
+#define MAXDATASIZE 100
+#define IPV4_LEN 16
 
 // Checks if the client has passed the arguments (IP and port)
 void CheckArguments(int argc, char **argv, char error[MAXLINE + 1]){
     if (argc != 3) {
-      strcpy(error,"uso: ");
-      strcat(error,argv[0]);
-      strcat(error," <IPaddress>");
-      strcat(error," <Port>");
-      perror(error);
-      exit(1);
-   }
+        strcpy(error,"uso: ");
+        strcat(error,argv[0]);
+        strcat(error," <IPaddress>");
+        strcat(error," <Port>");
+        perror(error);
+        exit(1);
+    }
 }
 
+// Create Socket
 int Socket(int family, int type, int flags) {
     int sockfd;
     if ((sockfd = socket(family, type, flags)) < 0) {
@@ -33,6 +36,7 @@ int Socket(int family, int type, int flags) {
         return sockfd;
 }
 
+// Initialize servaddr
 void ConfigureServSocket(struct sockaddr_in *servaddr, char *ip, int port) {
     bzero(servaddr, sizeof(*servaddr));
     servaddr->sin_family = AF_INET;
@@ -43,6 +47,7 @@ void ConfigureServSocket(struct sockaddr_in *servaddr, char *ip, int port) {
     }
 }
 
+// Connect to a remote socket
 void Connect(int sockfd, struct sockaddr_in *servaddr) {
     if (connect(sockfd, (struct sockaddr *) servaddr, sizeof(*servaddr)) < 0) {
         perror("connect error");
@@ -50,23 +55,16 @@ void Connect(int sockfd, struct sockaddr_in *servaddr) {
     }
 }
 
-/* ===========================================================================
- * FUNCTION: main
- *
- * DESCRIPTION:
- *
- * PARAMETERS:
- *
- * DEPENDENDECIES:
- *
- * RETURN VALUE: 0 - if successful
- *
- * ===========================================================================*/
+// Main
 int main(int argc, char **argv) {
     int sockfd, n;
     char buffer_str[MAXLINE + 1];
     char error[MAXLINE + 1];
+    char serv_IP[IPV4_LEN];
+    char local_IP[IPV4_LEN];
+    struct sockaddr_in localaddr;
     struct sockaddr_in servaddr;
+    unsigned int len = sizeof(localaddr);
 
     CheckArguments(argc,argv,error);
 
@@ -76,29 +74,38 @@ int main(int argc, char **argv) {
 
     Connect(sockfd, &servaddr);
 
+    inet_ntop(AF_INET, &servaddr.sin_addr, serv_IP, sizeof(serv_IP));
+    printf("Server's IP: %s\nServer's Port: %d\n",serv_IP, ntohs(servaddr.sin_port));
+
+    bzero(&localaddr, sizeof(localaddr));
+    getsockname(sockfd, (struct sockaddr *) &localaddr, &len);
+    inet_ntop(AF_INET, &localaddr.sin_addr, local_IP, sizeof(local_IP));
+    printf("Local IP address: %s\n", local_IP);
+    printf("Local Port : %u\n", ntohs(localaddr.sin_port));
+
     for(;;) {
         fgets(buffer_str, MAXLINE, stdin);
         write(sockfd, buffer_str, strlen(buffer_str));
 
-       n = read(sockfd, buffer_str, MAXLINE);
-       if (n < 0)
-           exit(1);
-       buffer_str[n] = 0;
-       write(1, buffer_str, strlen(buffer_str));
-   }
+        n = read(sockfd, buffer_str, MAXLINE);
+        if (n < 0)
+            exit(1);
+        buffer_str[n] = 0;
+        write(1, buffer_str, strlen(buffer_str));
+    }
 
-   /* while ( (n = read(sockfd, recvline, MAXLINE)) > 0) { */
-   /*    recvline[n] = 0; */
-   /*    if (fputs(recvline, stdout) == EOF) { */
-   /*       perror("fputs error"); */
-   /*       exit(1); */
-   /*    } */
-   /* } */
+    /* while ( (n = read(sockfd, recvline, MAXLINE)) > 0) { */
+    /*    recvline[n] = 0; */
+    /*    if (fputs(recvline, stdout) == EOF) { */
+    /*       perror("fputs error"); */
+    /*       exit(1); */
+    /*    } */
+    /* } */
 
-   if (n < 0) {
-      perror("read error");
-      exit(1);
-   }
+    if (n < 0) {
+        perror("read error");
+        exit(1);
+    }
 
-   exit(0);
+    exit(0);
 }

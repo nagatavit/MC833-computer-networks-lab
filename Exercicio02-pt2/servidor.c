@@ -1,27 +1,30 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-#include <netdb.h>
-#include <sys/types.h>
-#include <netinet/in.h>
 #include <sys/socket.h>
-#include <time.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <netdb.h>
+#include <string.h>
+#include <errno.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 #define LISTENQ 10
 #define MAXDATASIZE 100
 #define MAXLINE 4096
 #define MIN_ARG 2
+#define IPV4_LEN 16
 
-void CheckArguments(int argc, char **argv, char error[MAXLINE + 1]){
+void CheckArguments(int argc, char **argv){
+    char error[MAXLINE + 1];
     if (argc != MIN_ARG) {
-      strcpy(error,"uso: ");
-      strcat(error,argv[0]);
-      strcat(error," <Port>");
-      perror(error);
-      exit(1);
-   }
+        strcpy(error,"uso: ");
+        strcat(error,argv[0]);
+        strcat(error," <Port>");
+        perror(error);
+        exit(1);
+    }
 }
 
 int Socket(int family, int type, int flags) {
@@ -53,13 +56,35 @@ void Listen(int listenfd) {
     }
 }
 
+int Accept(int listenfd, struct sockaddr_in *addr, unsigned int *addrlen){
+    int connfd;
+    if ((connfd = accept(listenfd, (struct sockaddr *) addr, addrlen)) == -1 ) {
+        perror("accept");
+        exit(1);
+    } else {
+        return connfd;
+    }
+}
+
+void Close(int sockfd) {
+    if (close(sockfd) == -1) {
+        perror("close");
+    }
+}
+
 int main (int argc, char **argv) {
     int listenfd, connfd, n;
     char buffer_str[MAXLINE + 1];
     struct sockaddr_in servaddr;
-    char error[MAXLINE + 1];
+    struct sockaddr_in cliaddr;
+    unsigned int cliaddr_len = sizeof cliaddr;
+    char cli_IP[IPV4_LEN];
+    pid_t pid;
+    /* FILE *logger; */
 
-    CheckArguments(argc, argv, error);
+    /* fopen("servidor_log.txt", "a"); */
+
+    CheckArguments(argc, argv);
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -69,34 +94,39 @@ int main (int argc, char **argv) {
 
     Listen(listenfd);
 
-    for ( ; ; ) {
-        if ((connfd = accept(listenfd, (struct sockaddr *) NULL, NULL)) == -1 ) {
-            perror("accept");
-            exit(1);
+    for (;;) {
+
+        connfd = Accept(listenfd, &cliaddr, &cliaddr_len);
+
+        if ((pid=fork()) == 0) {
+
+            Close(listenfd);
+
+            inet_ntop(AF_INET, &cliaddr.sin_addr, cli_IP, sizeof(cli_IP));
+            printf("Client's IP: %s\nClient's Port: %d\n",cli_IP, ntohs(cliaddr.sin_port));
+
+            while ( (n = read(connfd, buffer_str, MAXLINE)) > 0) {
+                buffer_str[n] = 0;
+
+                /* buffer_str[n] = 0; */
+                /* if (fputs(buffer_str, stdout) == EOF) { */
+                /*     perror("fputs error"); */
+                /*     exit(1); */
+                /* } */
+                /* printf("%d\n", n); */
+                /* printf("%s\n", buffer_str); */
+                write(connfd, buffer_str, strlen(buffer_str));
+                system(buffer_str);
+
+            }
+
+            Close(connfd);
+            exit(0);
         }
 
-        /*    n = read(connfd, buffer_str, MAXLINE); */
-        /*    if (n < 0) */
-        /*        exit(1); */
-        /*    buffer_str[n] = 0; */
-        /*    write(connfd, buffer_str, strlen(buffer_str)); */
-
-        /*    close(connfd); */
-
-        while ( (n = read(connfd, buffer_str, MAXLINE)) > 0) {
-            buffer_str[n] = 0;
-
-            /* buffer_str[n] = 0; */
-            /* if (fputs(buffer_str, stdout) == EOF) { */
-            /*     perror("fputs error"); */
-            /*     exit(1); */
-            /* } */
-            printf("%d\n", n);
-            printf("%s\n", buffer_str);
-            write(connfd, buffer_str, strlen(buffer_str));
-            system(buffer_str);
-        }
+        Close(connfd);
     }
 
     return(0);
+
 }
