@@ -215,18 +215,20 @@ int main(int argc, char **argv) {
     for(;;) {
         // Read Commands
         fgets(send_buffer_str, MAXDATASIZE, stdin);
+
+        // Exit command
+        if (strncmp(send_buffer_str, "sair", 4) == 0) {
+            close(sockfd);
+            printf(" Connection closed \n");
+            break;
+        }
+
         // Writes to socket
         Write(sockfd, send_buffer_str);
 
         while((n = Read(sockfd, recv_buffer_str)) > 0) {
             recv_buffer_str[n] = 0;
 
-            // Exit command
-            if (strncmp(recv_buffer_str, "sair", 4) == 0) {
-                close(sockfd);
-                printf(" Connection closed \n");
-                break;
-            }
             // print on the screen the command
             printf("%s", recv_buffer_str);
         }

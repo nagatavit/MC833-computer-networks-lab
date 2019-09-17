@@ -291,6 +291,8 @@ int main (int argc, char **argv) {
             // Reads the socket
             n = read(connfd, recv_buffer_str, MAXDATASIZE);
             if (n <= 0){
+                PrintClientSocketInfo(cliaddr, 1);
+                ConnectionLogger(cliaddr, 1);
                 Close(connfd);
                 exit(1);
             }
