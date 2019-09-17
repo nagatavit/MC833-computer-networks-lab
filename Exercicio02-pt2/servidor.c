@@ -199,6 +199,7 @@ int main (int argc, char **argv) {
     unsigned int cliaddr_len = sizeof cliaddr;
 
     pid_t pid;
+    FILE *fp;
 
     // Initial socket configurations
     CheckArguments(argc, argv);
@@ -221,19 +222,27 @@ int main (int argc, char **argv) {
             // Prints the new connected client socket
             PrintClientSocketInfo(cliaddr);
 
-            // Waits for commands to be received
-            while ( (n = read(connfd, recv_buffer_str, MAXDATASIZE)) > 0) {
-                recv_buffer_str[n] = 0;
+            // clear send buffer
+            bzero(send_buffer_str, MAXDATASIZE);
 
-                // Copy received string to sender string
-                strcpy(send_buffer_str,recv_buffer_str);
-
-                // Send the received string to client
-                write(connfd, recv_buffer_str, strlen(recv_buffer_str));
-
-                // executes the received string
-                system(recv_buffer_str);
+            // Reads the socket
+            n = read(connfd, recv_buffer_str, MAXDATASIZE);
+            if (n <= 0){
+                Close(connfd);
+                exit(1);
             }
+
+            // put end to the received string
+            recv_buffer_str[n-1] = 0;
+            // open pipe for Unix socket
+            fp = popen(recv_buffer_str, "r");
+
+            // send data to client
+            while (fgets(send_buffer_str, MAXDATASIZE, fp) != NULL){
+                send(connfd, send_buffer_str, strlen(send_buffer_str), 0);
+            }
+            // close pipe
+            pclose(fp);
 
             Close(connfd);
             exit(0);

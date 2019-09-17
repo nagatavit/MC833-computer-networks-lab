@@ -116,10 +116,12 @@ void Connect(int sockfd, struct sockaddr_in *servaddr) {
  * RETURN VALUE: none
  *
  * ===========================================================================*/
-void Read(int sockfd, char *recv_buffer_str){
+int Read(int sockfd, char *recv_buffer_str){
     int n;
     n = read(sockfd, recv_buffer_str, MAXDATASIZE);
 
+    printf("Read: %d\n", n);
+    printf("%s\n",recv_buffer_str);
     // if errors occur during the receiving package
     if (n < 0) {
         perror("read error");
@@ -128,6 +130,8 @@ void Read(int sockfd, char *recv_buffer_str){
 
     // put a \0 at the end of the string
     recv_buffer_str[n] = 0;
+
+    return n;
 }
 
 /* ===========================================================================
@@ -181,6 +185,7 @@ void PrintSocketInfo(struct sockaddr_in servaddr, int sockfd){
     inet_ntop(AF_INET, &cliaddr.sin_addr, local_IP, sizeof(local_IP));
     printf("Local IP: %s\nLocal Port : %u\n", local_IP, ntohs(cliaddr.sin_port));
     printf("========================================\n");
+
 }
 
 
@@ -197,7 +202,7 @@ void PrintSocketInfo(struct sockaddr_in servaddr, int sockfd){
  *
  * ===========================================================================*/
 int main(int argc, char **argv) {
-    int sockfd;
+    int sockfd, n;
     char send_buffer_str[MAXDATASIZE], recv_buffer_str[MAXDATASIZE];
     struct sockaddr_in servaddr;
 
@@ -214,18 +219,18 @@ int main(int argc, char **argv) {
         fgets(send_buffer_str, MAXDATASIZE, stdin);
         Write(sockfd, send_buffer_str);
 
-        Read(sockfd, recv_buffer_str);
-
-        if (strncmp(recv_buffer_str, "sair", 4) == 0) {
-            close(sockfd);
-            printf(" Connection closed ");
-            break;
+        /* while((n = Read(sockfd, recv_buffer_str)) > 0) { */
+        while((n = recv(sockfd, recv_buffer_str, MAXDATASIZE, 0)) > 0) {
+            recv_buffer_str[n] = 0;
+            if (strncmp(recv_buffer_str, "sair", 4) == 0) {
+                close(sockfd);
+                printf(" Connection closed \n");
+                break;
+            }
+            // print on the screen the command
+            printf("%s", recv_buffer_str);
         }
 
-        // print on the screen the command
-        Write(1, recv_buffer_str);
+        exit(0);
     }
-
-    exit(0);
-
 }
