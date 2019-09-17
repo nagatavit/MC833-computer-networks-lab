@@ -171,10 +171,47 @@ void Close(int sockfd) {
 void PrintClientSocketInfo(struct sockaddr_in cliaddr){
     char cli_IP[IPV4_LEN];
 
+    // Prints client socket information
     printf("======== New connection ========\n");
     inet_ntop(AF_INET, &cliaddr.sin_addr, cli_IP, sizeof(cli_IP));
     printf("Client's IP: %s\nClient's Port: %d\n",cli_IP, ntohs(cliaddr.sin_port));
     printf("================================\n");
+}
+
+/* ===========================================================================
+ * FUNCTION: ConnectionLogger
+ *
+ * DESCRIPTION: logs each time a client connects or disconnects
+ *
+ * PARAMETERS:
+ * cliaddr - client socket information
+ * connect_disconnect - 0 if it was a connection, 1 if it was a disconnection
+ *
+ * RETURN VALUE: none
+ *
+ * ===========================================================================*/
+void ConnectionLogger(struct sockaddr_in cliaddr, int connect_disconnect){
+    char cli_IP[IPV4_LEN];
+    char state[MAXLINE];
+    char log_msg[MAXLINE], log_aux[MAXLINE];
+    time_t ticks;
+    FILE *fp;
+
+    if (connect_disconnect == 0)
+        strcpy(state, "[Connetion]  - ");
+    else
+        strcpy(state, "[Disconnect] - ");
+
+
+    ticks = time(NULL);
+    snprintf(log_msg, sizeof(log_msg), "%.24s\t", ctime(&ticks));
+    strcat(log_msg, state);
+    snprintf(log_aux, sizeof(log_aux), "Client's IP: %s | Client's Port: %d\n",cli_IP, ntohs(cliaddr.sin_port));
+    strcat(log_msg, log_aux);
+
+    fp = fopen("logger.txt", "a");
+    fprintf(fp, "%s", log_msg);
+    fclose(fp);
 }
 
 
@@ -221,6 +258,7 @@ int main (int argc, char **argv) {
 
             // Prints the new connected client socket
             PrintClientSocketInfo(cliaddr);
+            ConnectionLogger(cliaddr, 0);
 
             // clear send buffer
             bzero(send_buffer_str, MAXDATASIZE);
@@ -245,6 +283,7 @@ int main (int argc, char **argv) {
             pclose(fp);
 
             Close(connfd);
+            ConnectionLogger(cliaddr, 1);
             exit(0);
         }
 
@@ -252,6 +291,4 @@ int main (int argc, char **argv) {
     }
 
     return(0);
-
-
 }

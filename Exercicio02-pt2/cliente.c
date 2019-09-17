@@ -185,7 +185,6 @@ void PrintSocketInfo(struct sockaddr_in servaddr, int sockfd){
     inet_ntop(AF_INET, &cliaddr.sin_addr, local_IP, sizeof(local_IP));
     printf("Local IP: %s\nLocal Port : %u\n", local_IP, ntohs(cliaddr.sin_port));
     printf("========================================\n");
-
 }
 
 
