@@ -168,11 +168,17 @@ void Close(int sockfd) {
  * RETURN VALUE: none
  *
  * ===========================================================================*/
-void PrintClientSocketInfo(struct sockaddr_in cliaddr){
+void PrintClientSocketInfo(struct sockaddr_in cliaddr, int connect_disconnect){
     char cli_IP[IPV4_LEN];
-
+    char connect_string[MAXLINE];
     // Prints client socket information
-    printf("======== New connection ========\n");
+
+    if (connect_disconnect == 0)
+        strcpy(connect_string,"======== New connection ========");
+    else
+        strcpy(connect_string,"======== Disconnection ========");
+
+    printf("%s\n", connect_string);
     inet_ntop(AF_INET, &cliaddr.sin_addr, cli_IP, sizeof(cli_IP));
     printf("Client's IP: %s\nClient's Port: %d\n",cli_IP, ntohs(cliaddr.sin_port));
     printf("================================\n");
@@ -198,10 +204,9 @@ void ConnectionLogger(struct sockaddr_in cliaddr, int connect_disconnect){
     FILE *fp;
 
     if (connect_disconnect == 0)
-        strcpy(state, "[Connetion]  - ");
+        strcpy(state, "[Connetion] - ");
     else
         strcpy(state, "[Disconnect] - ");
-
 
     ticks = time(NULL);
     snprintf(log_msg, sizeof(log_msg), "%.24s\t", ctime(&ticks));
@@ -214,6 +219,25 @@ void ConnectionLogger(struct sockaddr_in cliaddr, int connect_disconnect){
     fclose(fp);
 }
 
+
+/* ===========================================================================
+ * FUNCTION: PrintCommand
+ *
+ * DESCRIPTION: prints client's IP and Port and desired command
+ *
+ * PARAMETERS:
+ * cliaddr - client's socket
+ * command - input command
+ *
+ * RETURN VALUE: none
+ *
+ * ===========================================================================*/
+void PrintCommand(struct sockaddr_in cliaddr, char *command){
+    char cli_IP[IPV4_LEN];
+
+    inet_ntop(AF_INET, &cliaddr.sin_addr, cli_IP, sizeof(cli_IP));
+    printf("IP: %s, Port: %d, Command: %s\n",cli_IP, ntohs(cliaddr.sin_port), command);
+}
 
 /* ===========================================================================
  * FUNCTION: main
@@ -257,7 +281,8 @@ int main (int argc, char **argv) {
             Close(listenfd);
 
             // Prints the new connected client socket
-            PrintClientSocketInfo(cliaddr);
+            PrintClientSocketInfo(cliaddr, 0);
+            // Logs the connection from the client
             ConnectionLogger(cliaddr, 0);
 
             // clear send buffer
@@ -272,6 +297,10 @@ int main (int argc, char **argv) {
 
             // put end to the received string
             recv_buffer_str[n-1] = 0;
+
+            // Prints client commands
+            PrintCommand(cliaddr, recv_buffer_str);
+
             // open pipe for Unix socket
             fp = popen(recv_buffer_str, "r");
 
@@ -282,7 +311,10 @@ int main (int argc, char **argv) {
             // close pipe
             pclose(fp);
 
+            // Close connection
             Close(connfd);
+            // Logs disconnection
+            PrintClientSocketInfo(cliaddr, 1);
             ConnectionLogger(cliaddr, 1);
             exit(0);
         }

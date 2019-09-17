@@ -118,10 +118,9 @@ void Connect(int sockfd, struct sockaddr_in *servaddr) {
  * ===========================================================================*/
 int Read(int sockfd, char *recv_buffer_str){
     int n;
+
     n = read(sockfd, recv_buffer_str, MAXDATASIZE);
 
-    printf("Read: %d\n", n);
-    printf("%s\n",recv_buffer_str);
     // if errors occur during the receiving package
     if (n < 0) {
         perror("read error");
@@ -187,7 +186,6 @@ void PrintSocketInfo(struct sockaddr_in servaddr, int sockfd){
     printf("========================================\n");
 }
 
-
 /* ===========================================================================
  * FUNCTION: main
  *
@@ -215,12 +213,15 @@ int main(int argc, char **argv) {
     PrintSocketInfo(servaddr, sockfd);
 
     for(;;) {
+        // Read Commands
         fgets(send_buffer_str, MAXDATASIZE, stdin);
+        // Writes to socket
         Write(sockfd, send_buffer_str);
 
-        /* while((n = Read(sockfd, recv_buffer_str)) > 0) { */
-        while((n = recv(sockfd, recv_buffer_str, MAXDATASIZE, 0)) > 0) {
+        while((n = Read(sockfd, recv_buffer_str)) > 0) {
             recv_buffer_str[n] = 0;
+
+            // Exit command
             if (strncmp(recv_buffer_str, "sair", 4) == 0) {
                 close(sockfd);
                 printf(" Connection closed \n");
