@@ -138,7 +138,7 @@ int Accept(int listenfd, struct sockaddr_in *addr, unsigned int *addrlen){
     int connfd;
     if ((connfd = accept(listenfd, (struct sockaddr *) addr, addrlen)) == -1 ) {
         perror("accept");
-        exit(1);
+        return -1;
     } else {
         return connfd;
     }
@@ -258,7 +258,7 @@ void sig_child(int signo){
     pid_t pid;
     int stat;
     while( (pid = waitpid(-1, &stat, WNOHANG)) > 0)
-        printf("child %d terminado\n", pid);
+        printf("child %d terminated\n", pid);
     return;
 }
 
@@ -298,10 +298,12 @@ int main (int argc, char **argv) {
         // Accept connections
         connfd = Accept(listenfd, &cliaddr, &cliaddr_len);
 
-        if (errno == EINTR)
-            continue;
-        else
-            perror("Accept");
+        if (connfd == -1){
+            if (errno == EINTR)
+                continue;
+            else
+                perror("Accept");
+        }
 
         /* after the connection is extablished the process executes a fork, which
          * will be responsible for the actual execution of the echo function.
