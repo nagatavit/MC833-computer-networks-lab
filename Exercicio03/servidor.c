@@ -293,16 +293,19 @@ int main (int argc, char **argv) {
     Listen(listenfd, atoi(argv[2]));
     signal(SIGCHLD, sig_child);
 
-    for (;;) {
-
+    for (;;){
         // Accept connections
         connfd = Accept(listenfd, &cliaddr, &cliaddr_len);
 
+        // If there is a disconnection during the accept process, and the
+        // interrupt causes an error, try to accept the connection again
         if (connfd == -1){
             if (errno == EINTR)
                 continue;
-            else
+            else {
                 perror("Accept");
+                exit(1);
+            }
         }
 
         /* after the connection is extablished the process executes a fork, which
@@ -354,8 +357,9 @@ int main (int argc, char **argv) {
         }
 
         Close(connfd);
-
         sleep(1000);
+
+
     }
 
     return(0);

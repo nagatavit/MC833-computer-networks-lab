@@ -14,8 +14,8 @@
 #include "servidor.h"
 
 #define LISTENQ 10
+#define MAXLINE 1024
 #define MAXDATASIZE 100
-#define MAXLINE 4096
 #define MIN_ARG 3
 #define IPV4_LEN 16
 
@@ -34,7 +34,7 @@
  * ===========================================================================*/
 int main (int argc, char **argv) {
     int listenfd, connfd, n;
-    char send_buffer_str[MAXLINE + 1], recv_buffer_str[MAXLINE + 1];
+    char recv_buffer_str[MAXLINE + 1];
     struct sockaddr_in servaddr, cliaddr;
 
     unsigned int cliaddr_len = sizeof cliaddr;
@@ -42,7 +42,7 @@ int main (int argc, char **argv) {
     pid_t pid;
 
     // Initial socket configurations
-    CheckArguments(argc, argv);
+    /* CheckArguments(argc, argv); */
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     ConfigureServSocket(&servaddr, atoi(argv[1]));
     Bind(listenfd, &servaddr);
@@ -71,19 +71,11 @@ int main (int argc, char **argv) {
 
             Close(listenfd);
 
-            // Prints the new connected client socket
-            /* PrintClientSocketInfo(cliaddr, 0); */
-            // Logs the connection from the client
-            /* ConnectionLogger(cliaddr, 0); */
-
-            // clear send buffer
-            bzero(send_buffer_str, MAXDATASIZE);
-
             // Reads the socket
             while((n = read(connfd, recv_buffer_str, MAXLINE)) > 0){
                 // put end to the received string
-                recv_buffer_str[n-1] = 0;
-
+                recv_buffer_str[n] = 0;
+                write(1, recv_buffer_str, strlen(recv_buffer_str));
                 /* printf("%s", recv_buffer_str); */
                 write(connfd, recv_buffer_str, strlen(recv_buffer_str));
             }
@@ -91,9 +83,6 @@ int main (int argc, char **argv) {
             // Close connection
             Close(connfd);
 
-            // Logs disconnection
-            /* PrintClientSocketInfo(cliaddr, 1); */
-            /* ConnectionLogger(cliaddr, 1); */
             exit(0);
         }
 

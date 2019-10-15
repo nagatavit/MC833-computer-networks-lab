@@ -13,7 +13,7 @@
 #include <unistd.h>
 
 #include "cliente.h"
-#define MAXLINE 4096
+#define MAXLINE 1024
 #define MAXDATASIZE 100
 #define IPV4_LEN 16
 
@@ -31,6 +31,7 @@
  * ===========================================================================*/
 
 int main(int argc, char **argv) {
+    int n;
     char send_buffer_str[MAXLINE + 1], recv_buffer_str[MAXLINE + 1];
     struct sockaddr_in servaddr;
     FILE *fp = stdin; // file to be sent (via redirect)
@@ -52,7 +53,7 @@ int main(int argc, char **argv) {
         FD_SET(fileno(fp), &rset);
         FD_SET(sockfd, &rset);
         // number of descriptors + 1
-        maxfdp1 = 3 + 1;
+        maxfdp1 = 4;
 
         // I/O multiplexing with select
         select(maxfdp1, &rset, NULL, NULL, NULL);
@@ -63,10 +64,12 @@ int main(int argc, char **argv) {
 
         // socket activity
         if (FD_ISSET(sockfd, &rset)){
-            if (read(sockfd, recv_buffer_str, MAXLINE) == 0){
+            if ((n = read(sockfd, recv_buffer_str, MAXLINE)) == 0){
                 perror("server terminated connection");
-                exit(1);
+                return 0;
             }
+
+            recv_buffer_str[n] = 0;
             fputs(recv_buffer_str, stdout);
         }
 
@@ -74,13 +77,10 @@ int main(int argc, char **argv) {
         if (FD_ISSET(fileno(fp), &rset)){
             if (fgets(send_buffer_str, MAXLINE, fp) != NULL){
                 write(sockfd, send_buffer_str, strlen(send_buffer_str));
-                /* printf("fgets is null"); */
-                /* return -1; */
-                // TODO verificar o diff entre o arquivo de entrada e o de saida
             }
 
             if (feof(fp)){
-                return 0;
+                shutdown(sockfd, SHUT_WR);
             }
         }
 
