@@ -29,7 +29,6 @@
  * RETURN VALUE: 0 - if successful
  *
  * ===========================================================================*/
-
 int main(int argc, char **argv) {
     int n;
     char send_buffer_str[MAXLINE + 1], recv_buffer_str[MAXLINE + 1];
@@ -40,12 +39,12 @@ int main(int argc, char **argv) {
     int maxfdp1; // number of file descriptors to multiplex
 
     // initial socket configurations
-    /* CheckArguments(argc,argv); */
+    CheckArguments(argc,argv);
     sockfd = Socket(AF_INET, SOCK_STREAM, 0);
     ConfigureServSocket(&servaddr, argv[1], atoi(argv[2]));
     Connect(sockfd, &servaddr);
 
-    // set select descriptor to zero
+    // set select to zero
     FD_ZERO(&rset);
 
     for(;;) {
@@ -65,7 +64,7 @@ int main(int argc, char **argv) {
         // socket activity
         if (FD_ISSET(sockfd, &rset)){
             if ((n = read(sockfd, recv_buffer_str, MAXLINE)) == 0){
-                perror("server terminated connection");
+                perror("End connection");
                 return 0;
             }
 
@@ -90,7 +89,7 @@ int main(int argc, char **argv) {
 void CheckArguments(int argc, char **argv){
     char error[MAXLINE + 1];
 
-    if (argc != 4) {
+    if (argc > 3) {
         strcpy(error,"uso: ");
         strcat(error,argv[0]);
         strcat(error," <IPaddress>");

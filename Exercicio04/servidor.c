@@ -42,7 +42,7 @@ int main (int argc, char **argv) {
     pid_t pid;
 
     // Initial socket configurations
-    /* CheckArguments(argc, argv); */
+    CheckArguments(argc, argv);
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     ConfigureServSocket(&servaddr, atoi(argv[1]));
     Bind(listenfd, &servaddr);
